@@ -4,30 +4,67 @@
 #include <unistd.h>
 #include <stdbool.h>
 #include <stdio.h> 
+#include <stdlib.h>
+#include <limits.h>
+
+#include "files.h"
 
 #define KEY_ESCAPE 27
 
-void render(int cursory, int cursory_min, int cursory_max, char* path) {
-    DIR *srcdir = opendir(path);
+/*TODO:
+IMPLEMENT PROPPER ERROR HANDLING*/
 
-    struct dirent *dir;
+void render(int *cursory, int *cursory_min, int *cursory_max, char *path, int ch) {
+    StringList list = list_filenames(path);
 
-    if (srcdir == NULL) {
-        exit(1);
+    int list_num = *cursory - *cursory_min;
+
+    switch(ch)
+    {
+        case KEY_ESCAPE: {
+            break;
+        }
+        
+        case 10: {
+            strcat(path, "/");
+            strcat(path, list.list[list_num]);
+
+            if (realpath(path, path) == NULL) {
+                exit(1);
+            }
+            break;
+        }
+
+        case KEY_UP: {
+            if(*cursory > *cursory_min) {
+                (*cursory)--;
+            }
+            break;
+        }
+        
+        case KEY_DOWN: {
+            if(*cursory + 1 < *cursory_max) {
+                (*cursory)++;
+            }                
+            break;
+        }
+        default: {
+            break;
+        }
     }
 
     erase();
-    mvprintw(0, 0, "THIS IS THE TOP BAR");
-    for(int printy = cursory_min; printy < cursory_max; printy++){
-        if((dir = readdir(d)) != NULL) {
-            mvprintw(printy, 0, "%s\n", dir->d_name);
-        } else {
-            mvprintw(printy, 0, ".");
-        }
+    mvprintw(0, 0, "[%s]", path) ;
+    for(int printy = *cursory_min; printy < *cursory_max; printy++){
+            if((size_t)(printy - *cursory_min) < list.len) {
+                mvprintw(printy, 0, "%s", list.list[printy - *cursory_min]);
+            } else {
+                mvprintw(printy, 0, "~");
+            }
     }
+    free_list(&list);
     refresh();
-    move(cursory, 0);
-    closedir(d);
+    move(*cursory, 0);
 }
 
 int main() {
@@ -47,34 +84,21 @@ int main() {
 
     bool loop = true;
 
+    char path[PATH_MAX] = ".";
+
+    char actualpath[PATH_MAX];
+
+    realpath(path, actualpath);
+
+    int ch = 0;
 
     while(loop)
     {
         cursory_max = getmaxy(stdscr);
-        render(cursory, cursory_min, cursory_max, ".");
-        int ch = getch();
-        switch(ch)
-        {
-            case KEY_ESCAPE: {
-                loop = false;
-                break;
-            }
-            case KEY_UP: {
-                if(cursory > cursory_min) {
-                    cursory--;
-                }
-                break;
-            }
-            case KEY_DOWN: {
-                if(cursory + 1 <  cursory_max) {
-                    cursory++;
-                }                
-                break;
-            }
-            default: {
-                break;
-            }
-        }
+
+
+        render(&cursory, &cursory_min, &cursory_max, actualpath, ch);
+        ch = getch();
     }
     endwin();
     return 0;
